@@ -127,3 +127,12 @@ To activate multiplanar mode, type
     $ sudo modprobe v4l2-loop mplane=1
 
 during loading.
+
+# TESTS
+Regular V4L2_MEMORY_MMAP memory model and single planar buffers are widely used
+so there is no problem to test that use case as well.
+Actually one of the reasons why this kernel module was created originated from the need to handle multi planar buffers
+as well as less often used memory models such as V4L2_MEMORY_USERPTR and V4L2_MEMORY_DMABUF.
+My other tiny project allows to test that unusual use cases. If someone is interested,
+plese visit [v4l2-video-capture](https://github.com/lukasz-wiecaszek/v4l2-video-capture)
+
