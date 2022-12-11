@@ -1,0 +1,8 @@
+*.cmd
+Module.symvers
+modules.order
+v4l2-loop.ko
+v4l2-loop.mod
+v4l2-loop.mod.c
+v4l2-loop.mod.o
+v4l2-loop.o
