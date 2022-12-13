@@ -230,6 +230,8 @@ static void v4l2_loop_release_cbufs(struct v4l2_loop_consumer_handle *c)
 	if (c->bufs) {
 		__u32 i;
 
+		v4l2_loop_dbg_at2("releasing %u consumer buffers\n", c->buffers);
+
 		for (i = 0; i < c->buffers; i++) {
 			struct v4l2_loop_cbuf *cbuf = &c->bufs[i];
 			v4l2_loop_release_cplanes(cbuf);
@@ -500,18 +502,21 @@ static int v4l2_loop_fill_user_buffer(
 static void v4l2_loop_fill_vb2_buffer_mplane(struct v4l2_buffer *buffer, struct vb2_buffer *vb)
 {
 	__u32 plane;
+	__u32 num_planes = buffer->length;
 
-	if (vb->memory == VB2_MEMORY_USERPTR) {
-		vb->planes[plane].m.userptr = buffer->m.planes[plane].m.userptr;
-		vb->planes[plane].length = buffer->m.planes[plane].length;
+	for (plane = 0; plane < num_planes; ++plane) {
+		if (vb->memory == VB2_MEMORY_USERPTR) {
+			vb->planes[plane].m.userptr = buffer->m.planes[plane].m.userptr;
+			vb->planes[plane].length = buffer->m.planes[plane].length;
+		}
+		else
+		if (vb->memory == VB2_MEMORY_DMABUF) {
+			vb->planes[plane].m.fd = buffer->m.planes[plane].m.fd;
+			vb->planes[plane].length = buffer->m.planes[plane].length;
+		}
+		else
+			; /* do nothing */
 	}
-	else
-	if (vb->memory == VB2_MEMORY_DMABUF) {
-		vb->planes[plane].m.fd = buffer->m.planes[plane].m.fd;
-		vb->planes[plane].length = buffer->m.planes[plane].length;
-	}
-	else
-		; /* do nothing */
 }
 
 static void v4l2_loop_fill_vb2_buffer_splane(struct v4l2_buffer *buffer, struct vb2_buffer *vb)
@@ -1595,8 +1600,6 @@ static int v4l2_loop_reqbufs_consumer(
 
 	h->htype = V4L2_LOOP_HANDLE_CONSUMER;
 
-pr_err("v4l2_loop_reqbufs_consumer count: %u\n", requestbuffers->count);
-
 	if (requestbuffers->memory != VB2_MEMORY_MMAP &&
 		requestbuffers->memory != VB2_MEMORY_USERPTR &&
 		requestbuffers->memory != VB2_MEMORY_DMABUF) {
@@ -1917,20 +1920,22 @@ static int v4l2_loop_dqbuf_consumer(struct file *file, void *fh, struct v4l2_buf
 	spin_lock_irqsave(&dev->queued_bufs_lock, flags);
 	pbuf = list_first_entry(&dev->queued_bufs, struct v4l2_loop_pbuf, pnode);
 	status = v4l2_loop_validate_planes(&pbuf->vbuf.vb2_buf, buffer);
-	if (!status) {
+	if (!status)
 		list_del(&pbuf->pnode);
-		list_del(&cbuf->cnode);
-		cbuf->pbuf = pbuf;
-		cbuf->vbuf.vb2_buf.state = VB2_BUF_STATE_DEQUEUED;
-	}
 	spin_unlock_irqrestore(&dev->queued_bufs_lock, flags);
 
 	if (status)
-		return -EINVAL;
+		return status;
 
 	status = v4l2_loop_fill_user_buffer(pbuf, cbuf, buffer);
-	if (status)
+	if (status) {
+		vb2_buffer_done(&pbuf->vbuf.vb2_buf, VB2_BUF_STATE_ERROR);
 		return status;
+	}
+
+	list_del(&cbuf->cnode);
+	cbuf->pbuf = pbuf;
+	cbuf->vbuf.vb2_buf.state = VB2_BUF_STATE_DEQUEUED;
 
 	return 0;
 }
@@ -1966,7 +1971,8 @@ static int v4l2_loop_streamon(struct file *file, void *fh, enum v4l2_buf_type ty
 	struct vb2_queue *vq = vdev->queue;
 	int status;
 
-	v4l2_loop_dbg_at3("%s(%s)\n", __func__, video_device_node_name(vdev));
+	v4l2_loop_dbg_at3("%s(%s, %s)\n", __func__,
+		video_device_node_name(vdev), v4l2_loop_handle_name(fh));
 
 	if (V4L2_LOOP_IS_PRODUCER(type)) {
 		/* The queue is busy if there is a owner and you are not that owner */
@@ -1994,7 +2000,8 @@ static int v4l2_loop_streamoff(struct file *file, void *fh, enum v4l2_buf_type t
 	struct vb2_queue *vq = vdev->queue;
 	int status;
 
-	v4l2_loop_dbg_at3("%s(%s)\n", __func__, video_device_node_name(vdev));
+	v4l2_loop_dbg_at3("%s(%s, %s)\n", __func__,
+		video_device_node_name(vdev), v4l2_loop_handle_name(fh));
 
 	if (V4L2_LOOP_IS_PRODUCER(type)) {
 		/* The queue is busy if there is a owner and you are not that owner */
