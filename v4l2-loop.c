@@ -1338,10 +1338,15 @@ static int v4l2_loop_g_fmt_out(struct file *file, void *priv, struct v4l2_format
 	if (!dev->format.type) {/* format is not yet set by the producer */
 		v4l2_loop_dbg_at2("%s(%s) format is not yet set by the producer\n",
 			__func__, video_device_node_name(vdev));
-		return -EINVAL;
+		/* This method is to be called by producers.
+		But what format shall be returned if it hasn't been negotiated yet?
+		Don't know, but ffmpeg calls this functionality early so it gets -EINVAL.
+		So, lets provide some format, and make ffmpeg happy */
+		//return -EINVAL;
 	}
 
 	*format = dev->format;
+	format->type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
 	v4l2_loop_print_format(format);
 
 	return 0;
@@ -1451,10 +1456,15 @@ static int v4l2_loop_g_fmt_out_mplane(struct file *file, void *priv, struct v4l2
 	if (!dev->format.type) {/* format is not yet set by the producer */
 		v4l2_loop_dbg_at2("%s(%s) format is not yet set by the producer\n",
 			__func__, video_device_node_name(vdev));
-		return -EINVAL;
+		/* This method is to be called by producers.
+		But what format shall be returned if it hasn't been negotiated yet?
+		Don't know, but ffmpeg calls this functionality early so it gets -EINVAL.
+		So, lets provide some format, and make ffmpeg happy */
+		//return -EINVAL;
 	}
 
 	*format = dev->format;
+	format->type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 	v4l2_loop_print_format(format);
 
 	return 0;

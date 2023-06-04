@@ -248,14 +248,15 @@ static inline void v4l2_loop_print_format(const struct v4l2_format* format)
 			"\ttype        : %s\n"
 			"\twidth       : %u\n"
 			"\theight      : %u\n"
-			"\tpixelformat : '%c%c%c%c'\n",
+			"\tpixelformat : 0x%08x '%c%c%c%c'\n",
 			v4l2_loop_buf_type_to_string(format->type),
 			format->fmt.pix.width,
 			format->fmt.pix.height,
-			(format->fmt.pix.pixelformat >>  0) & 0xff,
-			(format->fmt.pix.pixelformat >>  8) & 0xff,
-			(format->fmt.pix.pixelformat >> 16) & 0xff,
-			(format->fmt.pix.pixelformat >> 24) & 0xff
+			format->fmt.pix.pixelformat,
+			(format->fmt.pix.pixelformat >>  0) & 0xff ?: '-',
+			(format->fmt.pix.pixelformat >>  8) & 0xff ?: '-',
+			(format->fmt.pix.pixelformat >> 16) & 0xff ?: '-',
+			(format->fmt.pix.pixelformat >> 24) & 0xff ?: '-'
 		);
 		if ((status < 0) || (status >= limit))
 			break;
