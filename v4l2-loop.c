@@ -1981,6 +1981,35 @@ static int v4l2_loop_dqbuf(struct file *file, void *fh, struct v4l2_buffer *buff
 	return 0;
 }
 
+static int v4l2_loop_expbuf(struct file *file, void *fh, struct v4l2_exportbuffer *buffer)
+{
+	struct video_device *vdev = video_devdata(file);
+	struct vb2_queue *vq = vdev->queue;
+	int status;
+
+	v4l2_loop_dbg_at3("%s(%s, %s)\n", __func__,
+		video_device_node_name(vdev),
+		v4l2_loop_buf_type_to_string(buffer->type));
+
+	if (V4L2_LOOP_IS_PRODUCER(buffer->type)) {
+		/* The queue is busy if there is a owner and you are not that owner */
+		if (vq->owner && vq->owner != file->private_data)
+			return -EBUSY;
+	} else if (V4L2_LOOP_IS_CONSUMER(buffer->type))
+		buffer->type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+	else
+		return -EINVAL;
+
+	status = vb2_expbuf(vq, buffer);
+
+	if (status)
+		return status;
+
+	//v4l2_loop_print_exportbuffer(buffer);
+
+	return 0;
+}
+
 static int v4l2_loop_streamon(struct file *file, void *fh, enum v4l2_buf_type type)
 {
 	struct video_device *vdev = video_devdata(file);
@@ -2093,6 +2122,7 @@ static const struct v4l2_ioctl_ops v4l2_loop_ioctl_ops = {
 	.vidioc_querybuf		= v4l2_loop_querybuf,
 	.vidioc_qbuf			= v4l2_loop_qbuf,
 	.vidioc_dqbuf			= v4l2_loop_dqbuf,
+	.vidioc_expbuf			= v4l2_loop_expbuf,//vb2_ioctl_expbuf,
 
 	.vidioc_streamon		= v4l2_loop_streamon,
 	.vidioc_streamoff		= v4l2_loop_streamoff,
