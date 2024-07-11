@@ -645,12 +645,20 @@ static void v4l2_loop_queue_buf_queue(struct vb2_buffer *vb)
 	struct v4l2_loop_device *dev = vb2_get_drv_priv(vb->vb2_queue);
 	struct v4l2_loop_pbuf *pbuf = v4l2_loop_pbuf(vb);
 	unsigned long flags;
+	struct list_head list;
 
 	spin_lock_irqsave(&dev->queued_bufs_lock, flags);
+	list_replace_init(&dev->queued_bufs, &list);
 	list_add_tail(&pbuf->pnode, &dev->queued_bufs);
 	spin_unlock_irqrestore(&dev->queued_bufs_lock, flags);
 
 	wake_up_all(&dev->waiting_consumers);
+
+	if (!list_empty(&list)) {
+		list_for_each_entry(pbuf, &list, pnode) {
+			vb2_buffer_done(&pbuf->vbuf.vb2_buf, VB2_BUF_STATE_ERROR);
+		}
+	}
 }
 
 static int v4l2_loop_queue_start_streaming(struct vb2_queue *vq, unsigned int i)
