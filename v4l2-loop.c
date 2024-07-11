@@ -1781,7 +1781,7 @@ static int v4l2_loop_qbuf_producer(struct file *file, void *fh, struct v4l2_buff
 
 	/* The queue is busy if there is an owner and you are not that owner */
 	if (vq->owner && vq->owner != file->private_data)
-		return EBUSY;
+		return -EBUSY;
 
 	status = vb2_qbuf(vq, vdev->v4l2_dev->mdev, buffer);
 	if (status) {
@@ -1871,7 +1871,7 @@ static int v4l2_loop_dqbuf_producer(struct file *file, void *fh, struct v4l2_buf
 
 	/* The queue is busy if there is an owner and you are not that owner */
 	if (vq->owner && vq->owner != file->private_data)
-		return EBUSY;
+		return -EBUSY;
 
 	status = vb2_dqbuf(vq, buffer, file->f_flags & O_NONBLOCK);
 	if (status) {
